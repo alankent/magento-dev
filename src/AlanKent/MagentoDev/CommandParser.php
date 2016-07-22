@@ -41,6 +41,8 @@ class CommandParser
      */
     public function main($args)
     {
+        // TODO: Consider using Symfony parser for better command line parsing and error message etc.
+
         if (count($args) < 2) {
 
             echo "Insufficient arguments provided to command.\n";
@@ -79,12 +81,12 @@ class CommandParser
     private function usage()
     {
         echo "Usage: magento-dev <command> where 'command' is one of:\n\n";
-        echo "    create <environment> ...  Create new development environment. Arguments are specific to environment.\n";
-        echo "    destroy [--force]         Destroy all files created for the environment.\n";
-        echo "    connect <provider> ...    Connect to a production host using the specified environment.\n";
-        echo "    pull-code                 Pull a copy of the code from the current connected provider.\n";
-        echo "    push-code                 Push the code to the connected provider and run deployment actions.\n";
-        echo "    disconnect                Forget about the last environment connected to.\n";
+        echo "  create <environment> ...  Create new development environment.\n";
+        echo "  destroy [--force]         Destroy all files created for the environment.\n";
+        echo "  connect <provider> ...    Connect to a production host.\n";
+        echo "  pull-code                 Pull a copy of the code from the current provider.\n";
+        echo "  push-code                 Push the code run deployment actions.\n";
+        echo "  disconnect                Forget about the last environment connected to.\n";
         echo "\n";
     }
 
@@ -104,7 +106,11 @@ class CommandParser
         $environment = $this->findEnvironment($envName);
         if ($environment == null) {
             echo "Unknown environment name '$envName'.\n";
-            $this->usage();
+            echo "Supported environment names are:\n\n";
+            foreach ($this->environments as $envName => $env) {
+                echo "    $envName\n";
+            }
+            echo "\n";
             return 1;
         }
         $config = Config::load();

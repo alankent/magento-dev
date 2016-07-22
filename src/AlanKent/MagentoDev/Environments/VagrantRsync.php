@@ -58,10 +58,11 @@ class VagrantRsync implements EnvironmentInterface
         }
 
         echo "\n";
-        echo "Review the Vagrantfile configuration settings before using this box (e.g. network settings).\n";
-        echo "Then run\n\n";
+        echo "Review the Vagrantfile configuration settings before using this box (e.g.\n";
+        echo "network settings). Then run\n\n";
         echo "    vagrant up           Starts and initializes the Vagrant box.\n";
-        echo "    vagrant rsync-auto   Watches for local filesystem changes and copies them into the VM.\n";
+        echo "    vagrant rsync-auto   Watches for local filesystem changes and copies them\n";
+        echo "                         into the VM.\n";
         echo "\n";
 
         return 0;
