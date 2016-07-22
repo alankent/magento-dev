@@ -1,0 +1,83 @@
+#!/bin/sh
+
+mkdir /gulp
+cd /gulp
+
+sudo apt-get update
+sudo apt-get install -y unzip
+
+curl -L -o /tmp/frontool.zip https://github.com/SnowdogApps/magento2-frontools/archive/master.zip
+unzip /tmp/frontool.zip
+rm /tmp/frontool.zip
+mv magento2-frontools-master/* .
+
+cp /scripts/install-gulp-run-gulp.sh /usr/local/bin/run-gulp.sh
+chmod +rx /usr/local/bin/run-gulp.sh
+
+npm install -g gulp
+npm install --save-dev gulp
+npm install jshint gulp-less gulp-concat gulp-uglify gulp-rename gulp-livereload gulp-sourcemaps gulp-util notify-send --save-dev
+npm install
+
+cat <<EOF > configs/browser-sync.json
+{
+  "proxy": "http://localhost"
+}
+EOF
+
+cat <<EOF > configs/themes.json
+{
+  "backend": {
+    "src": "/magento2/app/design/adminhtml/Magento/backend",
+    "dest": "/magento2/pub/static/adminhtml/Magento/backend",
+    "locale": ["en_US"],
+    "lang": "less",
+    "default": true,
+    "area": "adminhtml",
+    "vendor": "Magento",
+    "name": "backend",
+    "files": [
+      "css/styles-old",
+      "css/styles"
+    ]
+  },
+  "blank": {
+    "src": "/magento2/app/design/frontend/Magento/blank",
+    "dest": "/magento2/pub/static/frontend/Magento/blank",
+    "locale": ["en_US"],
+    "lang": "less",
+    "default": true,
+    "area": "frontend",
+    "vendor": "Magento",
+    "name": "blank",
+    "files": [
+      "css/styles-m",
+      "css/styles-l",
+      "css/print",
+      "css/email",
+      "css/email-inline"
+    ]
+  },
+  "luma": {
+    "src": "/magento2/app/design/frontend/Magento/luma",
+    "dest": "/magento2/pub/static/frontend/Magento/luma",
+    "locale": ["en_US"],
+    "lang": "less",
+    "default": true,
+    "area": "frontend",
+    "vendor": "Magento",
+    "name": "luma",
+    "files": [
+      "css/styles-m",
+      "css/styles-l",
+      "css/print",
+      "css/email",
+      "css/email-inline"
+    ]
+  }
+}
+EOF
+
+# Use 'magento', not '../bin/magento' as we installed this somewhere else.
+sed -i -e 's/..\/bin\/magento/magento/' /gulp/tasks/deploy.js 
+

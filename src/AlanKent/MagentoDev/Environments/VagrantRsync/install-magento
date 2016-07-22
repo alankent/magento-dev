@@ -1,0 +1,48 @@
+#!/bin/sh
+
+# Remove the default sites enabled.
+sudo rm /etc/apache2/sites-enabled/*
+
+# Add the Apache virtual host file
+sudo cp /scripts/install-magento-magento.conf /etc/apache2/sites-enabled/magento.conf
+
+# Overwrite apache config file to use /vagrant instead of /var/www/html
+sudo cp /scripts/install-magento-apache2.conf /etc/apache2/apache2.conf
+
+# Register cron entries.
+(
+    echo "*/1 * * * * /usr/local/bin/php -c /usr/local/etc/php/php.ini /vagrant/bin/magento cron:run"
+    echo "*/1 * * * * /usr/local/bin/php -c /usr/local/etc/php/php.ini /vagrant/update/cron.php"
+    echo "*/1 * * * * /usr/local/bin/php -c /usr/local/etc/php/php.ini /vagrant/bin/magento setup:cron:run"
+) | crontab -u vagrant -
+
+# Restart the web server
+sudo apache2ctl restart
+
+# Load all the other composer packages.
+cd /vagrant
+id
+composer install
+chmod +x bin/magento
+
+# Create the database
+echo 'CREATE DATABASE IF NOT EXISTS `magento`;' | mysql -uroot
+
+# Create tables and env.php with local settings.
+bin/magento setup:install --backend-frontname=admin \
+        --cleanup-database --db-host=127.0.0.1 \
+        --db-name=magento --db-user=root --db-password= \
+        --admin-firstname=Magento --admin-lastname=User \
+        --admin-email=user@example.com \
+        --admin-user=admin --admin-password=admin123 --language=en_US \
+        --currency=USD --timezone=America/Chicago --use-rewrites=1
+
+# Flip to developer mode (above sets it to 'default').
+sed -i -e "s/'MAGE_MODE' => 'default'/'MAGE_MODE' => 'developer'/" app/etc/env.php
+
+# Clear all the caches for good luck
+rm -rf var/*
+
+# Update bashrc file
+echo 'export PATH=${PATH}:/vagrant/bin' >> ~vagrant/.bashrc
+
