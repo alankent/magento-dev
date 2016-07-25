@@ -45,7 +45,9 @@ Available environments:
 
 Available providers:
 
-- (None yet available.)
+- [**magento-cloud**](src/AlanKent/MagentoDev/Providers/MagentoCloud/README.md): 
+    Displays instructions how to push/pull code etc for Magento Cloud.
+
 
 Feedback welcome. Talk to me before you plan any big contributions to avoid merge conflicts
 (I am still doing reasonably dramatic changes to the code).
@@ -53,3 +55,8 @@ Feedback welcome. Talk to me before you plan any big contributions to avoid merg
 If successful, this code may be merged into the Magento code base and so follow standard
 Magento copyright ownership and licenses. All external code contributions should keep this
 in mind.
+
+## TODO
+
+* "Environment" might be confusing for Magento Cloud users, as it is something different.
+* "Provider" might be better called "Hosting Provider" or "Connector".
