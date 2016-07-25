@@ -10,20 +10,46 @@ I have not done that here however as I am hoping this tool will not supposed to 
 to specific versions of Magento (although maybe it should be in case of configuration
 changes).
 
-First step is to build an 'rsync' based Vagrantfile. Another variation might be a Docker
-based setup on Mac with native file sharing (available in Docker 1.12). By keeping such
-files out of the 'git' repository for a project, this should allow different developers
-on a project to use their own environment of choice. (That is part of the experiment - 
-to see if this is actually useful.)
+There are two concepts supported by this tool, *environments* and *providers*.
+Environments are for local development and may be created using configuration files for
+technologies such as Docker or Vagrant. 
+Providers are hosting providers for when you want to push your project code changes into
+production. 
+Both environments and providers here are intended for simple projects. It is likely
+that advanced users would build their own variation of tools and deployment processes.
+The goal here is to get people going.
 
-The first environment is 'vagrant-rsync'.
- 
-- **magento-dev create vagrant-rsync**
+Currently there is no installer. You need to get this code directly from GitHub and create
+a shell script or BAT file to run the `magento-dev.php` PHP script. The script takes command
+line arguments as follows:
+
+```
+Usage: magento-dev <command> where 'command' is one of:
+
+  create <environment> ...  Create new development environment.
+  destroy [--force]         Destroy all files created for the environment.
+  connect <provider> ...    Connect to a production host.
+  pull-code                 Pull a copy of the code from the current provider.
+  push-code                 Push the code and run deployment actions.
+  disconnect                Forget about the last environment connected to.
+```
+
+Available environments:
+
+- [**vagrant-rsync**](src/AlanKent/MagentoDev/Environments/VagrantRsync/README.md): 
     Creates a Vagrantfile and support files to use Vagrant to set up a M2 development
-    environment. Uses 'vagrant rsync-auto' to copy local file system changes into the box.
+    environment. Uses `vagrant rsync-auto` to copy local file system changes into the box.
     This works well on Windows, allowing the source code to be kept on your laptop natively
     (which is generally better for an IDE) while having the full database and other tools
     run in a VM, avoiding problems with multiple versions of PHP and MySQL etc installed.
 
+Available providers:
+
+- (None yet available.)
+
 Feedback welcome. Talk to me before you plan any big contributions to avoid merge conflicts
 (I am still doing reasonably dramatic changes to the code).
+
+If successful, this code may be merged into the Magento code base and so follow standard
+Magento copyright ownership and licenses. All external code contributions should keep this
+in mind.

@@ -2,7 +2,12 @@
 
 namespace AlanKent\MagentoDev;
 
-
+/**
+ * An environment is a set of tools for local development. Vagrant is an example technology
+ * that can be used to build an environment upon. There may be several environments defined
+ * using Vagrant, such as "vagrant-rsync" (use the "rsync" mode of Vagrant) and "vagrant-nfs"
+ * (use Vagrant, but with NFS mounted volumes instead of using rsync).
+ */
 interface EnvironmentInterface
 {
     /**

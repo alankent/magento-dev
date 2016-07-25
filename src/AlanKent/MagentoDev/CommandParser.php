@@ -2,7 +2,7 @@
 
 namespace AlanKent\MagentoDev;
 
-use \AlanKent\MagentoDev\Environments\VagrantRsync;
+use \AlanKent\MagentoDev\Environments\VagrantRsync\VagrantRsyncEnvironment;
 
 /**
  * Parse the command line arguments and process the requested command.
@@ -26,7 +26,7 @@ class CommandParser
     public function __construct()
     {
         $this->environments = [
-            'vagrant-rsync' => new VagrantRsync()
+            'vagrant-rsync' => new VagrantRsyncEnvironment()
         ];
         $this->providers = [
             //TODO: Add providers here.
@@ -85,7 +85,7 @@ class CommandParser
         echo "  destroy [--force]         Destroy all files created for the environment.\n";
         echo "  connect <provider> ...    Connect to a production host.\n";
         echo "  pull-code                 Pull a copy of the code from the current provider.\n";
-        echo "  push-code                 Push the code run deployment actions.\n";
+        echo "  push-code                 Push the code and run deployment actions.\n";
         echo "  disconnect                Forget about the last environment connected to.\n";
         echo "\n";
     }

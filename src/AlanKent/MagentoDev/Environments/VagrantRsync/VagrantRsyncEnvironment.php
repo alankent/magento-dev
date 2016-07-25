@@ -1,15 +1,15 @@
 <?php
 
-namespace AlanKent\MagentoDev\Environments;
+namespace AlanKent\MagentoDev\Environments\VagrantRsync;
 
 use AlanKent\MagentoDev\EnvironmentInterface;
 
 /**
  * Creates/destroys an environment using 'vagrant rsync-auto' for Magento 2.
  */
-class VagrantRsync implements EnvironmentInterface
+class VagrantRsyncEnvironment implements EnvironmentInterface
 {
-    const SOURCE_DIRNAME = __DIR__.'/VagrantRsync';
+    const SOURCE_DIRNAME = __DIR__.'/VagrantRsync/scripts';
 
     const VAGRANTFILE_FILENAME = 'Vagrantfile';
 
