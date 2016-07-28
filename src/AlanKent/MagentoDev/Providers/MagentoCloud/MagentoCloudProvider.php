@@ -24,37 +24,36 @@ class MagentoCloudProvider implements ProviderInterface
     {
         echo "Please refer to the Magento Cloud documentation for installing\n";
         echo "and using the 'magento-cloud' CLI.\n";
-        return 0;
     }
 
     /**
      * @inheritdoc
      */
-    public function pullCode(&$config)
+    public function checkConnection($config)
+    {
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function pullCode($config, $environment)
     {
         echo "Use 'git pull' to pull the latest source code.\n";
-        return 0;
     }
 
     /**
-     * Push a copy of the local code to the remote host.
-     * @param array $config Configuration settings that can be updated to save connection details into.
-     * @return int Process exit status, where 0 = success.
+     * @inheritdoc
      */
-    public function pushCode(&$config)
+    public function pushCode($config, $environment)
     {
         echo "Use 'git add', 'git commit', 'git push' etc to deploy latest source code.\n";
-        return 0;
     }
 
     /**
-     * Disconnect from hosting provider.
-     * @param array $config Configuration settings that can be updated to save connection details into.
-     * @return int Process exit status, where 0 = success.
+     * @inheritdoc
      */
     public function disconnect(&$config)
     {
         echo "Use the appropriate 'magento-cloud' command when tearing down environments.\n";
-        return 0;
     }
 }

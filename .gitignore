@@ -2,3 +2,4 @@ src/Vagrantfile
 src/scripts/
 src/.magento-dev.json
 .idea/
+tmp/

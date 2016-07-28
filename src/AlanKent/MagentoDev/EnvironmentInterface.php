@@ -14,7 +14,7 @@ interface EnvironmentInterface
      * Create an environment, parsing any configuration line arguments local to environment.
      * @param array $config Configuration file settings.
      * @param array $args Command line arguments for this command to parse (with previous command line arguments stripped).
-     * @return int Process exit status code to be returned (0 = success).
+     * @throws MdException Thrown on error to report to user.
      */
     public function create(&$config, $args);
 
@@ -23,7 +23,22 @@ interface EnvironmentInterface
      * @param array $config Configuration file settings.
      * @param bool $force Set to true if files should be deleted even if modified. If set to true, warnings should
      * not return a non-zero status code.
-     * @return int Process exit status code (0 = success).
+     * @throws MdException Thrown on error to report to user.
      */
     public function destroy(&$config, $force);
+
+    /**
+     * Synchronize the local files into the environment. If the file system is shared, this is a no-operation.
+     * @param array $config Configuration file settings.
+     * @throws MdException Thrown on error to report to user.
+     */
+    public function syncToEnvironment($config);
+
+    /**
+     * Run the given command inside the environment.
+     * @param array $config Configuration settings to connect to environment.
+     * @param string $cmd The command to run inside the environment.
+     * @throws MdException Thrown on error to report to user.
+     */
+    public function runCommand($config, $cmd);
 }
