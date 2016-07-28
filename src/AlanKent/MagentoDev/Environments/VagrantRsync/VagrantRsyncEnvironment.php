@@ -142,6 +142,9 @@ class VagrantRsyncEnvironment implements EnvironmentInterface
         system($run);
     }
 
+    /**
+     * @inheritdoc
+     */
     public function syncToEnvironment($config)
     {
         $run = "sh -c 'vagrant rsync'";
@@ -149,5 +152,13 @@ class VagrantRsyncEnvironment implements EnvironmentInterface
         // If rsync-auto is running in background, give it a chance to complete (hacky!)
         sleep(3);
         system($run);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function excludeFiles()
+    {
+        return ["Vagrantfile", "scripts"];
     }
 }

@@ -98,6 +98,7 @@ class GoDaddyProvider implements ProviderInterface
         }
         if (!file_exists($this->expandPath($sshIdentity))) {
 
+            // TODO: Could consider performing these files automatically.
             $msg = "The SSH identify file '$sshIdentity' does not exist.\n";
             $msg .= "Use the --ssh-identity option to the connect command to specify a different file,\n";
             $msg .= "or create a new file using a command such as (inserting your real email address):\n\n";
@@ -110,15 +111,6 @@ class GoDaddyProvider implements ProviderInterface
 
             throw new MdException($msg, 1);
         }
-
-//            file_put_contents("$HOME/.ssh/config", <<<EOF
-//host $sshHost
-// HostName $sshHost
-// IdentityFile $defaultIdentity
-// User git
-//EOF
-//            );
-//            chmod("$HOME/.ssh/config", 0x400);
     }
 
     /**
@@ -198,7 +190,7 @@ class GoDaddyProvider implements ProviderInterface
         }
 
         echo "==== Fetching code from production.\n";
-        $this->scpRemoteToLocal($config, "/opt/bitnami/apps/magento/htdocs/\\*", ".", self::EXCLUDE_LIST);
+        $this->copyRemoteToLocal($config, "/opt/bitnami/apps/magento/htdocs/\\*", ".", self::EXCLUDE_LIST);
         foreach (self::EXCLUDE_LIST as $dir) {
             if (!file_exists($dir)) {
                 mkdir($dir, 0777, true);
@@ -231,6 +223,7 @@ class GoDaddyProvider implements ProviderInterface
             $environment->runCommand($config, "cd /vagrant; bin/magento indexer:reindex");
             $environment->runCommand($config, "cd /vagrant; bin/magento maintenance:disable");
 
+            // TODO: Should be able to remove this one day.
             // Above commands result in 'localhost' being in cached files - clear
             // the cache to lose that setting.
             $environment->runCommand($config, "cd /vagrant; rm -rf var/cache");
@@ -238,61 +231,43 @@ class GoDaddyProvider implements ProviderInterface
     }
 
     /**
-     * Push a copy of the local code to the remote host.
-     * @throws MdException Thrown on error.
+     * @inheritdoc
      */
     public function pushCode($config, $environment)
     {
         $this->checkConnection($config);
 
         echo "==== Put production store into mainenance mode.\n";
-        $this->runOnProd($config, "
-            cd $HTDOCS
-            sudo -u daemon bin/magento maintenance:enable
-        ");
+        $htdocs = self::HTDOCS_PATH;
+        $this->runOnProd($config, "cd $htdocs; sudo -u daemon bin/magento maintenance:enable");
 
         echo "==== Merge development changes on production.\n";
-        $this->runOnProd($config, "
-            cd $HTDOCS
-            $GIT pull upstream master
-            sudo chgrp -R daemon .
-            sudo chmod -R g+w .
-        ");
+        $this->copyLocalToRemote($config, ".", $htdocs, array_merge(self::EXCLUDE_LIST, $environment->excludeFiles()));
+        $this->runOnProd($config, "cd $htdocs; sudo chgrp -R daemon .; sudo chmod -R g+w .");
 
         echo "==== Refresh any composer installed libraries.\n";
         // This turns off the Magento installer installing 'base' package changes
         // over the top of any locally committed changes. Eventually this will
         // no longer be required. For now, do not do this in production.
-        runOnProd($config, "
-            cd $HTDOCS
-            mv composer.json composer.json.original
-            sed <composer.json.original >composer.json -e \"/extra.:/ a\\
+        $this->runOnProd($config, "cd $htdocs; mv composer.json composer.json.original");
+        $this->runOnProd($config, "cd $htdocs; sed <composer.json.original >composer.json -e \"/extra.:/ a\\
                 \\\"magento-deploystrategy\\\": \\\"none\\\",
-        \"
-            composer install
-            mv composer.json.original composer.json
-            sudo chown -R daemon:daemon var pub/static
-        ");
+        \"");
+        $this->runOnProd($config, "cd $htdocs; composer install");
+        $this->runOnProd($config, "cd $htdocs; mv composer.json.original composer.json");
+        $this->runOnProd($config, "cd $htdocs; sudo chown -R daemon:daemon var pub/static");
 
         echo "==== Update the database schema.\n";
-        $this->runOnProd($config, "
-            cd $HTDOCS
-            sudo -u daemon bin/magento setup:upgrade
-        ");
+        $this->runOnProd($config, "cd $htdocs; sudo -u daemon bin/magento setup:upgrade");
 
         echo "==== Switching production mode, triggering compile and content deployment.\n";
-        $this->runOnProd($config, "
-            cd $HTDOCS
-            sudo -u daemon bin/magento deploy:mode:set production
-            sudo -u daemon bin/magento maintenance:disable
-            sudo chmod -R g+ws var pub/static
-        ");
+        $this->runOnProd($config, "cd $htdocs; sudo -u daemon bin/magento deploy:mode:set production");
+        $this->runOnProd($config, "cd $htdocs; sudo -u daemon bin/magento maintenance:disable");
+        $this->runOnProd($config, "cd $htdocs; sudo chmod -R g+ws var pub/static");
 
         echo "==== Turning off bitnami banner\n";
-        $this->runOnProd($config, "
-            sudo /opt/bitnami/apps/magento/bnconfig --disable_banner 1
-            sudo /opt/bitnami/ctlscript.sh restart apache
-        ");
+        $this->runOnProd($config, "sudo /opt/bitnami/apps/magento/bnconfig --disable_banner 1");
+        $this->runOnProd($config, "sudo /opt/bitnami/ctlscript.sh restart apache");
 
         echo "==== Ready for use.\n";
     }
@@ -343,8 +318,53 @@ class GoDaddyProvider implements ProviderInterface
         return $output;
     }
 
+    /**
+     * Copy files from production server to the local environment.
+     * @param array $config Configuration settings.
+     * @param string $fromDir The source directory (typically "htdocs") on the production server.
+     * @param string $toDir The destination directory (typically ".").
+     * @param string[] $excludes A list of files and directories to not copy.
+     * @throws MdException Thrown on error for user to see.
+     */
+    private function copyRemoteToLocal($config, $fromDir, $toDir, $excludes)
+    {
+        $host = $this->getSshHost($config);
+        $user = $this->getSshUser($config);
+        $port = $this->getSshPort($config);
+        $identity = $this->getSshIdentity($config);
 
-    private function scpRemoteToLocal($config, $fromDir, $toDir, $excludes)
+        $opts = '';
+
+        if ($port != '22') {
+            $opts .= " -p $port";
+        }
+
+        if ($identity != '') {
+            $opts .= " -i $identity";
+        }
+
+        $rsyncOpts = "";
+        if (!empty($excludes)) {
+            $rsyncOpts .= " --exclude " . implode(" --exclude ", $excludes);
+        }
+
+        $cmd = "sh -c 'rsync -r -e \"ssh$opts\"$rsyncOpts $user@$host:$fromDir $toDir'";
+        echo "> $cmd\n";
+        system($cmd, $exitStatus);
+        if ($exitStatus != 0) {
+            throw new MdException("Failed to execute scp command on production server.", 1);
+        }
+    }
+
+    /**
+     * Copy files from local environment to the production environment.
+     * @param array $config Configuration settings.
+     * @param string $fromDir The source directory (typically ".").
+     * @param string $toDir The destination directory (typically "htdocs") on the production server.
+     * @param string[] $excludes A list of files and directories to not copy.
+     * @throws MdException Thrown on error for user to see.
+     */
+    private function copyLocalToRemote($config, $fromDir, $toDir, $excludes)
     {
         $host = $this->getSshHost($config);
         $user = $this->getSshUser($config);

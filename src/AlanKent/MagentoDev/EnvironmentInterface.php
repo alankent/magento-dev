@@ -41,4 +41,11 @@ interface EnvironmentInterface
      * @throws MdException Thrown on error to report to user.
      */
     public function runCommand($config, $cmd);
+
+    /**
+     * Return a list of local files and directories created as a part of this environment
+     * that are not intended to be copied to production.
+     * @return string[] The list of paths to not copy (e.g. "Vagrantfile", "Dockerfile").
+     */
+    public function excludeFiles();
 }

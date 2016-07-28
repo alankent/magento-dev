@@ -26,7 +26,7 @@ interface ProviderInterface
     /**
      * Download a copy of the code from the remote host.
      * @param array $config Configuration settings that can be updated to save connection details into.
-     * @param EnvironmentInterface|null $environment The currently configured environment (optional).
+     * @param EnvironmentInterface $environment The currently configured environment, or null if not set.
      * @throws MdException Thrown on error.
      */
     public function pullCode($config, $environment);
@@ -34,7 +34,7 @@ interface ProviderInterface
     /**
      * Push a copy of the local code to the remote host.
      * @param array $config Configuration settings that can be updated to save connection details into.
-     * @param EnvironmentInterface|null $environment The currently configured environment, or null if not set.
+     * @param EnvironmentInterface $environment The currently configured environment, or null if not set.
      * @throws MdException Thrown on error.
      */
     public function pushCode($config, $environment);
