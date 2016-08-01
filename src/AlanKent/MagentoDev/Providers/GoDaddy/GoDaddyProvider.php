@@ -190,7 +190,8 @@ class GoDaddyProvider implements ProviderInterface
         }
 
         echo "==== Fetching code from production.\n";
-        $this->copyRemoteToLocal($config, "/opt/bitnami/apps/magento/htdocs/\\*", ".", self::EXCLUDE_LIST);
+        // Note: The trailing "/" on "./" is important for correct operation.
+        $this->copyRemoteToLocal($config, "/opt/bitnami/apps/magento/htdocs/", "./", self::EXCLUDE_LIST);
         foreach (self::EXCLUDE_LIST as $dir) {
             if (!file_exists($dir)) {
                 mkdir($dir, 0777, true);
