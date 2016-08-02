@@ -103,14 +103,19 @@ class GoDaddyProvider implements ProviderInterface
             $msg .= "Use the --ssh-identity option to the connect command to specify a different file,\n";
             $msg .= "or create a new file using a command such as (inserting your real email address):\n\n";
             $msg .= "    ssh-keygen -t rsa -C your.email@example.com -N \"\" -f $sshIdentity\n\n";
-            $msg .= "To copy the public key to your production server, use a command such as\n\n";
-            $msg .= "    cat $sshIdentity.pub | ssh -oStrictHostKeyChecking=no -i $sshIdentity $sshUser@$sshHost \"mkdir -p ~/.ssh; cat >> ~/.ssh/authorized_keys\"\n\n";
-            $msg .= "You will be prompted for your password if the key has not been uploaded before.\n";
-            $msg .= "You can test that it works (you are not prompted for a password) using\n\n";
-            $msg .= "    ssh -i $sshIdentity $sshUser@$sshHost echo Working\n\n";
-
             throw new MdException($msg, 1);
         }
+
+        echo "Copying the SSH public key to your production server.\n\n";
+        echo "** If prompted, please enter you server password **\n\n";
+        $cmd = "sh -x -c 'cat $sshIdentity.pub | ssh -oStrictHostKeyChecking=no -i $sshIdentity $sshUser@$sshHost \"mkdir -p ~/.ssh; cat >> ~/.ssh/authorized_keys\"";
+        echo "> $cmd\n";
+        system($cmd);
+
+        echo "Testing SSH certification (you should not be asked for a password).\n";
+        $cmd = "sh -c 'ssh -i $sshIdentity $sshUser@$sshHost echo Working'";
+        echo "> $cmd\n";
+        system($cmd);
     }
 
     /**
@@ -185,7 +190,7 @@ class GoDaddyProvider implements ProviderInterface
         $htdocs = self::HTDOCS_PATH;
         $output = $this->runOnProd($config, "cat ~/.bashrc");
         if (strpos(implode($output), "magento") === false) {
-            $this->runOnProd($config, "echo export PATH=\${PATH}:$htdocs/bin >> ~/.bashrc");
+            $this->runOnProd($config, "echo export PATH=\\\${PATH}:$htdocs/bin >> ~/.bashrc");
             $this->runOnProd($config, "echo umask 002 >> ~/.bashrc");
         }
 
@@ -201,7 +206,7 @@ class GoDaddyProvider implements ProviderInterface
         echo "==== Downloading any next patches or extensions.\n";
         // Tell composer not to override local changes.
         // Eventually this step will not be required.
-        echo "Adding Magento deployment strategy to composer.json\n";
+        echo "Adding Magento deployment strategy to composer.json (ignore the 'none' warning)\n";
         $oldComposerJson = file_get_contents('composer.json');
         // This could parse the file as JSON, but this works.
         $newComposerJson = str_replace('extra": {', 'extra": { "magento-deploystrategy": "none",', $oldComposerJson);
@@ -243,7 +248,7 @@ class GoDaddyProvider implements ProviderInterface
         $this->runOnProd($config, "cd $htdocs; sudo -u daemon bin/magento maintenance:enable");
 
         echo "==== Merge development changes on production.\n";
-        $this->copyLocalToRemote($config, ".", $htdocs, array_merge(self::EXCLUDE_LIST, $environment->excludeFiles()));
+        $this->copyLocalToRemote($config, "./", $htdocs, array_merge(self::EXCLUDE_LIST, $environment->excludeFiles()));
         $this->runOnProd($config, "cd $htdocs; sudo chgrp -R daemon .; sudo chmod -R g+w .");
 
         echo "==== Refresh any composer installed libraries.\n";
@@ -251,19 +256,20 @@ class GoDaddyProvider implements ProviderInterface
         // over the top of any locally committed changes. Eventually this will
         // no longer be required. For now, do not do this in production.
         $this->runOnProd($config, "cd $htdocs; mv composer.json composer.json.original");
-        $this->runOnProd($config, "cd $htdocs; sed <composer.json.original >composer.json -e \"/extra.:/ a\\
-                \\\"magento-deploystrategy\\\": \\\"none\\\",
-        \"");
+        $this->runOnProd($config, 'cd '.$htdocs.'; sed < composer.json.original > composer.json -e \"/extra.:/ a \\\\\\\\\"magento-deploystrategy\\\\\\\\\": \\\\\\\\\"none\\\\\\\\\",\"');
         $this->runOnProd($config, "cd $htdocs; composer install");
-        $this->runOnProd($config, "cd $htdocs; mv composer.json.original composer.json");
+        $this->runOnProd($config, "cd $htdocs; cp composer.json.original composer.json");
         $this->runOnProd($config, "cd $htdocs; sudo chown -R daemon:daemon var pub/static");
 
         echo "==== Update the database schema.\n";
+        $this->runOnProd($config, "cd $htdocs; sudo rm -rf var/*"); // TODO: setup:upgrade failed due to 'mage-tags' had wrong file permissions.
         $this->runOnProd($config, "cd $htdocs; sudo -u daemon bin/magento setup:upgrade");
 
         echo "==== Switching production mode, triggering compile and content deployment.\n";
-        $this->runOnProd($config, "cd $htdocs; sudo -u daemon bin/magento deploy:mode:set production");
+        $this->runOnProd($config, "cd $htdocs; sudo -u daemon bin/magento deploy:mode:set production; exit 0"); // TODO: deploy:mode:set on success exits with status code 1?
+        $this->runOnProd($config, "cd $htdocs; sudo rm -rf var/*"); // TODO: 'mage-tags' got created with wrong file permissions - wiping.
         $this->runOnProd($config, "cd $htdocs; sudo -u daemon bin/magento maintenance:disable");
+        $this->runOnProd($config, "cd $htdocs; sudo rm -rf var/*"); // TODO: 'mage-tags' got created with wrong file permissions - wiping.
         $this->runOnProd($config, "cd $htdocs; sudo chmod -R g+ws var pub/static");
 
         echo "==== Turning off bitnami banner\n";
@@ -314,7 +320,7 @@ class GoDaddyProvider implements ProviderInterface
         echo "> $cmd\n";
         exec($cmd, $output, $exitStatus);
         if ($exitStatus != 0) {
-            throw new MdException("Failed to execute SSH command on production server.", 1);
+            throw new MdException("Failed to execute SSH command on production server (exit status $exitStatus).", 1);
         }
         return $output;
     }
@@ -387,7 +393,7 @@ class GoDaddyProvider implements ProviderInterface
             $rsyncOpts .= " --exclude " . implode(" --exclude ", $excludes);
         }
 
-        $cmd = "sh -c 'rsync -r -e \"ssh$opts\"$rsyncOpts $user@$host:$fromDir $toDir'";
+        $cmd = "sh -c 'rsync -r -e \"ssh$opts\"$rsyncOpts $fromDir $user@$host:$toDir'";
         echo "> $cmd\n";
         system($cmd, $exitStatus);
         if ($exitStatus != 0) {
